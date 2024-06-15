@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ProductModule } from './modules/products/product.module';
 import { UserModule } from './modules/users/user.module';
 import { UserService } from './modules/users/user.service';
 import { AuthModule } from './modules/auth/auth.module';
-import { PrismaModule } from '../prisma/prisma.module';
+
+import { SharedModule } from './shared/shared.module';
 
 @Module({
-  imports: [ UserModule, AuthModule, PrismaModule], 
+  imports: [ UserModule, SharedModule,AuthModule], 
   controllers: [AppController],
   providers: [{
     provide: 'APP_USER',

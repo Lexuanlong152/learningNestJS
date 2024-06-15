@@ -1,8 +1,8 @@
 import { Expose, Transform } from 'class-transformer';
 import { IsNotEmpty, Length } from 'class-validator';
-import { BaseDto } from 'src/base.dto';
 
-export class UserDto extends BaseDto {
+
+export class UserDto {
   @IsNotEmpty()
   @Expose()
   username: string;

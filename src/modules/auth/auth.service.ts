@@ -1,6 +1,6 @@
 import { Injectable , BadRequestException, ForbiddenException} from '@nestjs/common';
 import { AuthDto } from './dto/auth.dto';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaService } from '../../shared/providers/index';
 import * as bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
@@ -10,67 +10,71 @@ import { jwtSecret } from '../../utils/constants';
 export class AuthService {
     constructor(private readonly prismaService: PrismaService, private readonly jwtService: JwtService) {}
 
-    async signUp( dto: AuthDto ){
-       
-        const {email, password} = dto;
-        await this.prismaService.user.findUnique({
-            where: { email },
-        }).then(async (user)=> {
-            if(user){
-                throw new BadRequestException('Email already exists');
-            }
-            else{
-                const hashedPassword = await this.hashPassword(password);
-                await this.prismaService.user.create({
-                    data: {
-                        email,
-                        hashedPassword,   
-                    },
-                });
-                
-            }
+    async signUp( dto: AuthDto){
         
+        const {email, password} = dto;
+        console.log(email);
+        const authUser =await this.prismaService.user.findUnique({
+            where: { email },
         })
-        return 'Sign In Successful!';  
+        console.log(authUser);
+        if(authUser){
+            throw new BadRequestException('This emial has already existed')
+        }
+        else{
+            const hashedPassword = await this.hashPassword(password);
+            await this.prismaService.user.create({
+                data:{
+                    email,
+                    hashedPassword
+                }
+            })
+            return 'Sign In Successful!';  
+        }
+       
     }
-    async signin(dto: AuthDto, req: Request, res: Response){
+    async signIn(dto: AuthDto, req: Request, res: Response){
         const { email, password } = dto;
-        let foundUser
-        await this.prismaService.user.findUnique({
+        const foundUser = await this.prismaService.user.findUnique({
             where: {
               email,
             },
-        }).then(async (user)=>{
-            if(!user ){
-                throw new BadRequestException('Wrong credentials');
-            }else{
-                const compareSuccess = await this.comparePasswords({
-                    password,
-                    hashPassword: user.hashedPassword,
-                });
-                console.log('compareSuccess:', compareSuccess)
-
-                if (!compareSuccess) {
-                    throw new BadRequestException('Wrong credentials');
-                }
-                const token = await this.signToken({
-                    userId: user.id,
-                    email: user.email,
-                });
-                console.log(token); 
-              
-                if (!token) {
-                    throw new ForbiddenException('Could not signin');
-                }
-              
-                res.cookie('token', token, {});
-              
-                return res.send({ message: 'Logged in succefully' });
-            }
         })
+        if(!foundUser ){
+                throw new BadRequestException('Wrong credentials');
+        }else{
+            const compareSuccess = await this.comparePasswords({
+                password,
+                hashPassword: foundUser.hashedPassword,
+            });
+            console.log('compareSuccess:', compareSuccess)
+
+            if (!compareSuccess) {
+                throw new BadRequestException('Wrong credentials');
+            }
+            const token = await this.signToken({
+                userId: foundUser.id,
+                email: foundUser.email,
+            });
+            console.log(token); 
+              
+            if (!token) {
+                throw new ForbiddenException('Could not signin');
+            }
+              
+            res.cookie('token', token, {});
+              
+            return res.send({ message: 'Logged in succefully' });
+            }
+        
       
         
     }
+    async signOut(req: Request, res: Response) {
+        res.clearCookie('token');
+    
+        return res.send({ message: 'Logged out succefully' });
+      }
 
     async hashPassword(password: string): Promise<string> {
         const countOfHash = 10;
@@ -82,9 +86,9 @@ export class AuthService {
         return await bcrypt.compare(args.password, args.hashPassword);
       }
     
-    async signToken(args: { userId: string; email: string }) {
+    async signToken(args: { userId: number; email: string }) {
         const payload = {
-          id: args.userId,
+          id: args.userId,      
           email: args.email,
         };
     
@@ -94,4 +98,5 @@ export class AuthService {
     
         return token;
     }
+   
 }

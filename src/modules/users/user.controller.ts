@@ -4,43 +4,32 @@ import {
   Get,
   Param,
   Post,
+  Req,
   UsePipes,
   ValidationPipe,
-  Inject
+  UseGuards
 } from '@nestjs/common';
 import { UserDto } from './user.dto';
 import { UserService } from './user.service';
-import { UserRepository } from './user.repository';
-
+import { JwtAuthGuard } from 'modules/auth/jwt.guard';
 @Controller('users')
 export class UserController {
   
-  constructor(@Inject('USER_SERVICE') private readonly userService: UserService){
+  constructor( private readonly userService: UserService){
     
   }
-  @Get()
-  getAllUsers() {
-    return [
-      {
-        name: 'long',
-        age: 23,
-      },
-    ];
+  @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  getMyUser(@Param() params: { id: number }, @Req() req) {
+    console.log(params.id);
+    return this.userService.getMyUser(params.id, req);
   }
+
   @UsePipes(new ValidationPipe())
   @Post()
   createUser(@Body() user: UserDto) {
     return this.userService.createUser(user);
   }
 
-  @Get(':id')
-  getUserById(@Param('id') id: number) {
-    console.log(id);
-    return [
-      {
-        name: 'long2',
-        age: 23,
-      },
-    ];
-  }
+  
 }
